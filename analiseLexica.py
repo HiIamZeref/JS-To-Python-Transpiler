@@ -5,8 +5,9 @@ class AnalisadorLexicoJS:
     tokens = (
         'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
         'LPAREN', 'RPAREN', 'IDENTIFIER', 'SEMICOLON', 'ASSIGN',
-        'VAR', 'CONST', 'LET', 'LBRACE', 'RBRACE', 'CONSOLE_LOG','PROMPT', 'COMMA', # Instrucoes de entrada e saida
-        'STRING', 'FOR', 'WHILE', 'BREAK', 'CONTINUE', # Logica de laços
+        'VAR', 'CONST', 'LET', 'LBRACE', 'RBRACE', 'CONSOLE_LOG', 'PROMPT', 'COMMA',
+        'STRING', 'FOR', 'WHILE', 'BREAK', 'CONTINUE', 'IF', 'ELSE',
+        'FUNCTION', 'RETURN', 'EQ', 'NEQ', 'LT', 'GT', 'LE', 'GE', 'AND', 'OR',
     )
 
     # Regras simples de token expressas como strings regulares.
@@ -21,6 +22,16 @@ class AnalisadorLexicoJS:
     t_LBRACE = r'\{'
     t_RBRACE = r'\}'
     t_COMMA = r','
+
+    # Expressões regulares para operadores relacionais e lógicos
+    t_EQ = r'=='
+    t_NEQ = r'!='
+    t_LT = r'<'
+    t_GT = r'>'
+    t_LE = r'<='
+    t_GE = r'>='
+    t_AND = r'&&'
+    t_OR = r'\|\|'
 
     # Importante: a ordem que as funções são definidas é relevante para o PLY
 
@@ -45,6 +56,24 @@ class AnalisadorLexicoJS:
 
     def t_CONTINUE(self, t):
         r'continue'
+        return t
+    
+    # Tokens para estruturas condicionais
+    def t_IF(self, t):
+        r'if'
+        return t
+
+    def t_ELSE(self, t):
+        r'else'
+        return t
+    
+    # Tokens para funções
+    def t_FUNCTION(self, t):
+        r'function'
+        return t
+
+    def t_RETURN(self, t):
+        r'return'
         return t
 
     # Tokens para instruções de entrada e saída
@@ -99,13 +128,24 @@ class AnalisadorLexicoJS:
         self.lexer = lex.lex(module=self)
 
     # Método para executar a análise léxica
-    def analisar(self, data):
-        self.lexer.input(data)
+    # def analisar(self, data):
+    #     self.lexer.input(data)
+    #     while True:
+    #         tok = self.lexer.token()
+    #         if not tok:
+    #             break
+    #         print(tok)
+
+    # Método para gerar os tokens
+    def analisar(self, code):
+        self.lexer.input(code)
+        tokens = []
         while True:
             tok = self.lexer.token()
             if not tok:
                 break
-            print(tok)
+            tokens.append(tok)
+        return tokens
 
 # Testando o analisador léxico
 if __name__ == "__main__":
