@@ -7,6 +7,7 @@ class AnalisadorLexicoJS:
         'VAR', 'CONST', 'LET', 'LBRACE', 'RBRACE', 'CONSOLE_LOG', 'PROMPT', 'COMMA',
         'STRING', 'FOR', 'WHILE', 'BREAK', 'CONTINUE', 'IF', 'ELSE',
         'FUNCTION', 'RETURN', 'EQ', 'NEQ', 'LT', 'GT', 'LE', 'GE', 'AND', 'OR',
+        'DOT', 'LBRACKET', 'RBRACKET'
     )
 
     t_PLUS = r'\+'
@@ -20,6 +21,10 @@ class AnalisadorLexicoJS:
     t_LBRACE = r'\{'
     t_RBRACE = r'\}'
     t_COMMA = r','
+    t_DOT = r'\.'
+    t_LBRACKET = r'\['
+    t_RBRACKET = r'\]'
+    
 
     t_EQ = r'=='
     t_NEQ = r'!='
@@ -109,11 +114,3 @@ class AnalisadorLexicoJS:
             tokens.append(tok)
         return tokens
 
-# Teste do analisador léxico
-if __name__ == "__main__":
-    code = '''
-    var x = 0;
-    '''
-    lexer = AnalisadorLexicoJS()
-    tokens = lexer.tokenize(code)
-    print("Tokens:", tokens)

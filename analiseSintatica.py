@@ -22,7 +22,7 @@ class AnalisadorSintaticoJS:
     def program(self):
         node = ASTNode("Program")
         while self.current_token:
-            if self.current_token.type in ('VAR', 'CONST', 'LET'):
+            if self.current_token.type == 'VAR':
                 node.add_child(self.var_declaration())
             elif self.current_token.type == 'WHILE':
                 node.add_child(self.while_statement())
@@ -38,7 +38,7 @@ class AnalisadorSintaticoJS:
 
     def var_declaration(self):
         node = ASTNode("VarDeclaration")
-        self.next_token()  # Consume 'VAR', 'CONST', ou 'LET'
+        self.next_token()  # Consume 'VAR'
         if self.current_token.type == 'IDENTIFIER':
             node.add_child(ASTNode("Identifier", self.current_token.value))
             self.next_token()  # Consume IDENTIFIER
@@ -116,7 +116,7 @@ class AnalisadorSintaticoJS:
         node = ASTNode("ExpressionStatement")
         node.add_child(self.expression())
         if self.current_token and self.current_token.type == 'SEMICOLON':
-            self.next_token()
+            self.next_token()  # Consume ';'
         return node
 
     def expression(self):
@@ -124,12 +124,36 @@ class AnalisadorSintaticoJS:
         return node
 
     def assignment(self):
-        node = self.comparison()
+        node = self.logical_or()
         while self.current_token and self.current_token.type == 'ASSIGN':
             operator = self.current_token
             self.next_token()
             right = self.assignment()
             new_node = ASTNode("AssignmentExpression", operator.value)
+            new_node.add_child(node)
+            new_node.add_child(right)
+            node = new_node
+        return node
+    
+    def logical_or(self):
+        node = self.logical_and()
+        while self.current_token and self.current_token.type == 'OR':
+            operator = self.current_token
+            self.next_token()
+            right = self.logical_and()
+            new_node = ASTNode("LogicalExpression", operator.value)
+            new_node.add_child(node)
+            new_node.add_child(right)
+            node = new_node
+        return node
+
+    def logical_and(self):
+        node = self.comparison()
+        while self.current_token and self.current_token.type == 'AND':
+            operator = self.current_token
+            self.next_token()
+            right = self.comparison()
+            new_node = ASTNode("LogicalExpression", operator.value)
             new_node.add_child(node)
             new_node.add_child(right)
             node = new_node
@@ -149,7 +173,7 @@ class AnalisadorSintaticoJS:
 
     def term(self):
         node = self.factor()
-        while self.current_token and self.current_token.type in ('PLUS', 'MINUS', 'TIMES', 'DIVIDE'):
+        while self.current_token and self.current_token.type in ('TIMES', 'DIVIDE', 'PLUS', 'MINUS'):
             operator = self.current_token
             self.next_token()
             right = self.factor()
@@ -170,13 +194,23 @@ class AnalisadorSintaticoJS:
             node = ASTNode("String", self.current_token.value)
             self.next_token()
         elif self.current_token.type == 'IDENTIFIER':
-            if self.peek_token() and self.peek_token().type == 'LPAREN':
-                node = self.function_call()
-            else:
-                node = ASTNode("Identifier", self.current_token.value)
-                self.next_token()
+            node = ASTNode("Identifier", self.current_token.value)
+            self.next_token()
+            while self.current_token and self.current_token.type == 'DOT':
+                self.next_token()  # Consume '.'
+                if self.current_token and self.current_token.type == 'IDENTIFIER':
+                    property_node = ASTNode("PropertyAccess", self.current_token.value)
+                    property_node.add_child(node)
+                    node = property_node
+                    self.next_token()  # Consume IDENTIFIER
+                else:
+                    raise SyntaxError("Esperado IDENTIFIER após '.'")
+            if self.current_token and self.current_token.type == 'LBRACKET':
+                node = self.array_access(node)
         elif self.current_token.type == 'CONSOLE_LOG':
             node = self.function_call()
+        elif self.current_token.type == 'LBRACKET':
+            node = self.array_literal()
         elif self.current_token.type == 'LPAREN':
             self.next_token()
             node = self.expression()
@@ -187,6 +221,34 @@ class AnalisadorSintaticoJS:
         else:
             raise SyntaxError(f"Token inesperado: {self.current_token}")
         return node
+
+
+
+
+    def array_literal(self):
+        elements = []
+        self.next_token()  # Consume '['
+        while self.current_token and self.current_token.type != 'RBRACKET':
+            elements.append(self.expression())
+            if self.current_token and self.current_token.type == 'COMMA':
+                self.next_token()  # Consume ','
+        if self.current_token and self.current_token.type == 'RBRACKET':
+            self.next_token()  # Consume ']'
+        node = ASTNode("ArrayLiteral")
+        node.children.extend(elements)
+        return node
+
+
+    def array_access(self, array_node):
+        self.next_token()  # Consume '['
+        index = self.expression()
+        if self.current_token and self.current_token.type == 'RBRACKET':
+            self.next_token()  # Consume ']'
+        node = ASTNode("ArrayAccess")
+        node.add_child(array_node)
+        node.add_child(index)
+        return node
+
 
     def function_call(self):
         node = ASTNode("FunctionCall", self.current_token.value)
@@ -201,6 +263,8 @@ class AnalisadorSintaticoJS:
                 self.next_token()  # Consume ')'
         return node
 
+
+
     def block(self):
         node = ASTNode("Block")
         if self.current_token.type == 'LBRACE':
@@ -212,7 +276,7 @@ class AnalisadorSintaticoJS:
         return node
 
     def statement(self):
-        if self.current_token.type in ('VAR', 'CONST', 'LET'):
+        if self.current_token.type == 'VAR':
             return self.var_declaration()
         elif self.current_token.type == 'WHILE':
             return self.while_statement()
@@ -222,19 +286,8 @@ class AnalisadorSintaticoJS:
             return self.if_statement()
         elif self.current_token.type == 'FUNCTION':
             return self.function_declaration()
-        elif self.current_token.type == 'RETURN':
-            return self.return_statement()
         else:
             return self.expression_statement()
-
-    def return_statement(self):
-        node = ASTNode("ReturnStatement")
-        self.next_token()  # Consume 'RETURN'
-        if self.current_token:
-            node.add_child(self.expression())
-        if self.current_token and self.current_token.type == 'SEMICOLON':
-            self.next_token()  # Consume ';'
-        return node
 
     def peek_token(self):
         if self.pos < len(self.tokens):
