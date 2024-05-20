@@ -1,16 +1,14 @@
 from arvoreSintatica import ASTNode
 
-class Parser:
+class AnalisadorSintaticoJS:
     def __init__(self, tokens):
-        # Inicializa o parser com uma lista de tokens e configura o estado inicial
         self.tokens = tokens
         self.current_token = None
         self.pos = 0
         self.ast = None
-        self.next_token()  # Carrega o primeiro token
+        self.next_token()
 
     def next_token(self):
-        # Avança para o próximo token na lista
         if self.pos < len(self.tokens):
             self.current_token = self.tokens[self.pos]
             self.pos += 1
@@ -18,32 +16,29 @@ class Parser:
             self.current_token = None
 
     def parse(self):
-        # Inicia o processo de parsing e retorna a árvore sintática abstrata (AST)
         self.ast = self.program()
         return self.ast
 
     def program(self):
-        # Representa o nó raiz da AST e processa múltiplas declarações e expressões
         node = ASTNode("Program")
         while self.current_token:
-            if self.current_token.type == 'VAR': # Declaração de variável
+            if self.current_token.type in ('VAR', 'CONST', 'LET'):
                 node.add_child(self.var_declaration())
-            elif self.current_token.type == 'WHILE': # Laço 'while'
+            elif self.current_token.type == 'WHILE':
                 node.add_child(self.while_statement())
-            elif self.current_token.type == 'FOR': # Laço 'for'
+            elif self.current_token.type == 'FOR':
                 node.add_child(self.for_statement())
-            elif self.current_token.type == 'IF': # Declaração condicional 'if-else'
+            elif self.current_token.type == 'IF':
                 node.add_child(self.if_statement())
-            elif self.current_token.type == 'FUNCTION': # Declaração de função
+            elif self.current_token.type == 'FUNCTION':
                 node.add_child(self.function_declaration())
             else:
                 node.add_child(self.expression_statement())
         return node
 
     def var_declaration(self):
-        # Processa uma declaração de variável
         node = ASTNode("VarDeclaration")
-        self.next_token()  # Consume 'VAR'
+        self.next_token()  # Consume 'VAR', 'CONST', ou 'LET'
         if self.current_token.type == 'IDENTIFIER':
             node.add_child(ASTNode("Identifier", self.current_token.value))
             self.next_token()  # Consume IDENTIFIER
@@ -55,7 +50,6 @@ class Parser:
         return node
 
     def while_statement(self):
-        # Processa uma declaração de laço 'while'
         node = ASTNode("WhileStatement")
         self.next_token()  # Consume 'WHILE'
         if self.current_token.type == 'LPAREN':
@@ -67,7 +61,6 @@ class Parser:
         return node
 
     def for_statement(self):
-        # Processa uma declaração de laço 'for'
         node = ASTNode("ForStatement")
         self.next_token()  # Consume 'FOR'
         if self.current_token.type == 'LPAREN':
@@ -83,7 +76,6 @@ class Parser:
         return node
 
     def if_statement(self):
-        # Processa uma declaração condicional 'if-else'
         node = ASTNode("IfStatement")
         self.next_token()  # Consume 'IF'
         if self.current_token.type == 'LPAREN':
@@ -98,7 +90,6 @@ class Parser:
         return node
 
     def function_declaration(self):
-        # Processa uma declaração de função
         node = ASTNode("FunctionDeclaration")
         self.next_token()  # Consume 'FUNCTION'
         if self.current_token.type == 'IDENTIFIER':
@@ -113,7 +104,6 @@ class Parser:
         return node
 
     def parameters(self):
-        # Processa os parâmetros de uma função
         node = ASTNode("Parameters")
         while self.current_token.type == 'IDENTIFIER':
             node.add_child(ASTNode("Identifier", self.current_token.value))
@@ -123,19 +113,33 @@ class Parser:
         return node
 
     def expression_statement(self):
-        # Processa uma expressão seguida por um ponto e vírgula
         node = ASTNode("ExpressionStatement")
         node.add_child(self.expression())
-        if self.current_token.type == 'SEMICOLON':
-            self.next_token()  # Consume ';'
+        if self.current_token and self.current_token.type == 'SEMICOLON':
+            self.next_token()
         return node
 
     def expression(self):
-        # Processa uma expressão genérica
-        node = self.term()
-        while self.current_token and self.current_token.type in ('PLUS', 'MINUS', 'AND', 'OR'):
+        node = self.assignment()
+        return node
+
+    def assignment(self):
+        node = self.comparison()
+        while self.current_token and self.current_token.type == 'ASSIGN':
             operator = self.current_token
-            self.next_token()  # Consume operator
+            self.next_token()
+            right = self.assignment()
+            new_node = ASTNode("AssignmentExpression", operator.value)
+            new_node.add_child(node)
+            new_node.add_child(right)
+            node = new_node
+        return node
+
+    def comparison(self):
+        node = self.term()
+        while self.current_token and self.current_token.type in ('EQ', 'NEQ', 'LT', 'LE', 'GT', 'GE'):
+            operator = self.current_token
+            self.next_token()
             right = self.term()
             new_node = ASTNode("BinaryExpression", operator.value)
             new_node.add_child(node)
@@ -144,11 +148,10 @@ class Parser:
         return node
 
     def term(self):
-        # Processa um termo em uma expressão (para lidar com multiplicação e divisão)
         node = self.factor()
-        while self.current_token and self.current_token.type in ('TIMES', 'DIVIDE'):
+        while self.current_token and self.current_token.type in ('PLUS', 'MINUS', 'TIMES', 'DIVIDE'):
             operator = self.current_token
-            self.next_token()  # Consume operator
+            self.next_token()
             right = self.factor()
             new_node = ASTNode("BinaryExpression", operator.value)
             new_node.add_child(node)
@@ -157,25 +160,48 @@ class Parser:
         return node
 
     def factor(self):
-        # Processa um fator em uma expressão (número, string, identificador, ou expressão entre parênteses)
+        if self.current_token is None:
+            raise SyntaxError("Fim inesperado do input")
+
         if self.current_token.type == 'NUMBER':
             node = ASTNode("Number", self.current_token.value)
-            self.next_token()  # Consume NUMBER
+            self.next_token()
         elif self.current_token.type == 'STRING':
             node = ASTNode("String", self.current_token.value)
-            self.next_token()  # Consume STRING
+            self.next_token()
         elif self.current_token.type == 'IDENTIFIER':
-            node = ASTNode("Identifier", self.current_token.value)
-            self.next_token()  # Consume IDENTIFIER
+            if self.peek_token() and self.peek_token().type == 'LPAREN':
+                node = self.function_call()
+            else:
+                node = ASTNode("Identifier", self.current_token.value)
+                self.next_token()
+        elif self.current_token.type == 'CONSOLE_LOG':
+            node = self.function_call()
         elif self.current_token.type == 'LPAREN':
-            self.next_token()  # Consume '('
+            self.next_token()
             node = self.expression()
-            if self.current_token.type == 'RPAREN':
+            if self.current_token and self.current_token.type == 'RPAREN':
+                self.next_token()
+            else:
+                raise SyntaxError("Esperado ')' após expressão")
+        else:
+            raise SyntaxError(f"Token inesperado: {self.current_token}")
+        return node
+
+    def function_call(self):
+        node = ASTNode("FunctionCall", self.current_token.value)
+        self.next_token()  # Consume IDENTIFIER or CONSOLE_LOG
+        if self.current_token.type == 'LPAREN':
+            self.next_token()  # Consume '('
+            while self.current_token and self.current_token.type != 'RPAREN':
+                node.add_child(self.expression())
+                if self.current_token and self.current_token.type == 'COMMA':
+                    self.next_token()  # Consume ','
+            if self.current_token and self.current_token.type == 'RPAREN':
                 self.next_token()  # Consume ')'
         return node
 
     def block(self):
-        # Processa um bloco de código delimitado por chaves '{ }'
         node = ASTNode("Block")
         if self.current_token.type == 'LBRACE':
             self.next_token()  # Consume '{'
@@ -186,8 +212,7 @@ class Parser:
         return node
 
     def statement(self):
-        # Processa uma declaração baseada no tipo do token atual
-        if self.current_token.type == 'VAR':
+        if self.current_token.type in ('VAR', 'CONST', 'LET'):
             return self.var_declaration()
         elif self.current_token.type == 'WHILE':
             return self.while_statement()
@@ -197,5 +222,22 @@ class Parser:
             return self.if_statement()
         elif self.current_token.type == 'FUNCTION':
             return self.function_declaration()
+        elif self.current_token.type == 'RETURN':
+            return self.return_statement()
         else:
             return self.expression_statement()
+
+    def return_statement(self):
+        node = ASTNode("ReturnStatement")
+        self.next_token()  # Consume 'RETURN'
+        if self.current_token:
+            node.add_child(self.expression())
+        if self.current_token and self.current_token.type == 'SEMICOLON':
+            self.next_token()  # Consume ';'
+        return node
+
+    def peek_token(self):
+        if self.pos < len(self.tokens):
+            return self.tokens[self.pos]
+        else:
+            return None

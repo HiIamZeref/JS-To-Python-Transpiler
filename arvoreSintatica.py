@@ -1,12 +1,17 @@
-# Estrutura auxiliar para a construção da árvore sintática
 class ASTNode:
-    def __init__(self, node_type, value=None):
-        self.node_type = node_type
+    def __init__(self, type, value=None, children=None):
+        self.type = type
         self.value = value
-        self.children = []
+        self.children = children if children is not None else []
 
-    def add_child(self, child):
-        self.children.append(child)
+    def add_child(self, node):
+        self.children.append(node)
 
-    def __repr__(self):
-        return f"{self.node_type}({self.value}, {self.children})"
+    def __repr__(self, level=0):
+        ret = "\t" * level + repr(self.type)
+        if self.value is not None:
+            ret += f" ({repr(self.value)})"
+        ret += "\n"
+        for child in self.children:
+            ret += child.__repr__(level + 1)
+        return ret
