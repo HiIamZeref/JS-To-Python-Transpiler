@@ -22,7 +22,7 @@ class AnalisadorSintaticoJS:
     def program(self):
         node = ASTNode("Program")
         while self.current_token:
-            if self.current_token.type == 'VAR':
+            if self.current_token.type in ('VAR', 'LET', 'CONST'):
                 node.add_child(self.var_declaration())
             elif self.current_token.type == 'WHILE':
                 node.add_child(self.while_statement())
@@ -38,7 +38,7 @@ class AnalisadorSintaticoJS:
 
     def var_declaration(self):
         node = ASTNode("VarDeclaration")
-        self.next_token()  # Consume 'VAR'
+        self.next_token()  # Consume 'VAR', 'LET' or 'CONST'
         if self.current_token.type == 'IDENTIFIER':
             node.add_child(ASTNode("Identifier", self.current_token.value))
             self.next_token()  # Consume IDENTIFIER
