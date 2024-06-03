@@ -89,6 +89,15 @@ class AnalisadorSintaticoJS:
                     node.add_child(self.block())
         return node
 
+    def return_statement(self):
+        node = ASTNode("ReturnStatement")
+        self.next_token()  # Consume 'RETURN'
+        if self.current_token and self.current_token.type != 'SEMICOLON':
+            node.add_child(self.expression())
+        if self.current_token and self.current_token.type == 'SEMICOLON':
+            self.next_token()  # Consume ';'
+        return node
+
     def function_declaration(self):
         node = ASTNode("FunctionDeclaration")
         self.next_token()  # Consume 'FUNCTION'
@@ -193,9 +202,17 @@ class AnalisadorSintaticoJS:
         elif self.current_token.type == 'STRING':
             node = ASTNode("String", self.current_token.value)
             self.next_token()
+        elif self.current_token.type == 'TRUE':
+            node = ASTNode("Boolean", True)
+            self.next_token()
+        elif self.current_token.type == 'FALSE':
+            node = ASTNode("Boolean", False)
+            self.next_token()
         elif self.current_token.type == 'IDENTIFIER':
             node = ASTNode("Identifier", self.current_token.value)
             self.next_token()
+            if self.current_token and self.current_token.type == 'LPAREN':
+                node = self.function_call(node)
             while self.current_token and self.current_token.type == 'DOT':
                 self.next_token()  # Consume '.'
                 if self.current_token and self.current_token.type == 'IDENTIFIER':
@@ -207,7 +224,7 @@ class AnalisadorSintaticoJS:
                     raise SyntaxError("Esperado IDENTIFIER após '.'")
             if self.current_token and self.current_token.type == 'LBRACKET':
                 node = self.array_access(node)
-        elif self.current_token.type == 'CONSOLE_LOG':
+        elif self.current_token.type in ('CONSOLE_LOG', 'PROMPT'):
             node = self.function_call()
         elif self.current_token.type == 'LBRACKET':
             node = self.array_literal()
@@ -223,8 +240,6 @@ class AnalisadorSintaticoJS:
         return node
 
 
-
-
     def array_literal(self):
         elements = []
         self.next_token()  # Consume '['
@@ -238,7 +253,6 @@ class AnalisadorSintaticoJS:
         node.children.extend(elements)
         return node
 
-
     def array_access(self, array_node):
         self.next_token()  # Consume '['
         index = self.expression()
@@ -249,10 +263,10 @@ class AnalisadorSintaticoJS:
         node.add_child(index)
         return node
 
-
-    def function_call(self):
-        node = ASTNode("FunctionCall", self.current_token.value)
-        self.next_token()  # Consume IDENTIFIER or CONSOLE_LOG
+    def function_call(self, node=None):
+        func_name = node.value if node else self.current_token.value
+        node = ASTNode("FunctionCall", func_name)
+        self.next_token()  # Consume IDENTIFIER or CONSOLE_LOG or PROMPT
         if self.current_token.type == 'LPAREN':
             self.next_token()  # Consume '('
             while self.current_token and self.current_token.type != 'RPAREN':
@@ -262,8 +276,6 @@ class AnalisadorSintaticoJS:
             if self.current_token and self.current_token.type == 'RPAREN':
                 self.next_token()  # Consume ')'
         return node
-
-
 
     def block(self):
         node = ASTNode("Block")
@@ -276,7 +288,7 @@ class AnalisadorSintaticoJS:
         return node
 
     def statement(self):
-        if self.current_token.type == 'VAR':
+        if self.current_token.type in ('VAR', 'LET', 'CONST'):
             return self.var_declaration()
         elif self.current_token.type == 'WHILE':
             return self.while_statement()
@@ -286,6 +298,8 @@ class AnalisadorSintaticoJS:
             return self.if_statement()
         elif self.current_token.type == 'FUNCTION':
             return self.function_declaration()
+        elif self.current_token.type == 'RETURN':
+            return self.return_statement()
         else:
             return self.expression_statement()
 

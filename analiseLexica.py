@@ -7,7 +7,7 @@ class AnalisadorLexicoJS:
         'VAR', 'CONST', 'LET', 'LBRACE', 'RBRACE', 'CONSOLE_LOG', 'PROMPT', 'COMMA',
         'STRING', 'FOR', 'WHILE', 'BREAK', 'CONTINUE', 'IF', 'ELSE',
         'FUNCTION', 'RETURN', 'EQ', 'NEQ', 'LT', 'GT', 'LE', 'GE', 'AND', 'OR',
-        'DOT', 'LBRACKET', 'RBRACKET'
+        'DOT', 'LBRACKET', 'RBRACKET', 'TRUE', 'FALSE'
     )
 
     t_PLUS = r'\+'
@@ -24,6 +24,10 @@ class AnalisadorLexicoJS:
     t_DOT = r'\.'
     t_LBRACKET = r'\['
     t_RBRACKET = r'\]'
+
+    t_TRUE = r'true'
+    t_FALSE = r'false'
+
     
 
     t_EQ = r'=='
@@ -87,7 +91,7 @@ class AnalisadorLexicoJS:
 
     def t_IDENTIFIER(self, t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
-        if t.value in ('var', 'const', 'let', 'for', 'while', 'break', 'continue', 'if', 'else', 'function', 'return'):
+        if t.value in ('var', 'const', 'let', 'for', 'while', 'break', 'continue', 'if', 'else', 'function', 'return', 'true', 'false'):
             t.type = t.value.upper()
         return t
 

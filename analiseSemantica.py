@@ -3,9 +3,12 @@ class AnalisadorSemanticoJS:
         self.ast = ast
         self.symbol_table = {
             'input': {'type': 'function', 'params': []},
-            'console.log': {'type': 'function', 'params': ['message']}
-        }  # Tabela de símbolos para variáveis e funções, incluindo funções padrão
-        self.errors = []  # Lista de erros semânticos encontrados
+            'console.log': {'type': 'function', 'params': None},  # Permite múltiplos argumentos
+            'prompt': {'type': 'function', 'params': ['message']},
+            'true': {'type': 'boolean'},
+            'false': {'type': 'boolean'}
+        }
+        self.errors = []
 
     def analyze(self):
         self.visit(self.ast)
@@ -33,7 +36,7 @@ class AnalisadorSemanticoJS:
             self.errors.append(f"Variável '{identifier.value}' já declarada.")
         else:
             self.symbol_table[identifier.value] = {'type': 'variable', 'initialized': False}
-        if len(node.children) > 1:  # Se houver inicialização
+        if len(node.children) > 1:
             self.visit(node.children[1])
             self.symbol_table[identifier.value]['initialized'] = True
 
@@ -53,7 +56,7 @@ class AnalisadorSemanticoJS:
             self.errors.append(f"Chamada a função não declarada '{identifier}'.")
         else:
             params_count = len(node.children)
-            if params_count != len(self.symbol_table[identifier]['params']):
+            if self.symbol_table[identifier]['params'] is not None and params_count != len(self.symbol_table[identifier]['params']):
                 self.errors.append(f"Função '{identifier}' chamada com número incorreto de argumentos.")
 
     def visit_Identifier(self, node):
@@ -93,37 +96,3 @@ class AnalisadorSemanticoJS:
         self.visit(node.children[1])
         self.visit(node.children[2])
         self.visit(node.children[3])
-
-# Teste do Analisador Semântico
-if __name__ == "__main__":
-    from analiseLexica import AnalisadorLexicoJS
-    from analiseSintatica import AnalisadorSintaticoJS
-
-    code = '''
-    let n = input();
-
-    for (var i = 0; i < n; i = i + 1) {
-        if (i > 5) {
-            console.log("Maior que 5");
-        } else {
-            console.log("Menor ou igual a 5");
-        }
-    }
-
-    function f(x, y) {
-        return x + y;
-    }
-
-    let result = f(3, 4);
-    '''
-
-    lexer = AnalisadorLexicoJS()
-    tokens = lexer.tokenize(code)
-    print("Tokens:", tokens)
-
-    parser = AnalisadorSintaticoJS(tokens)
-    ast = parser.parse()
-    print("AST:", ast)
-
-    analyzer = AnalisadorSemanticoJS(ast)
-    analyzer.analyze()
