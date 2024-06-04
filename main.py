@@ -58,7 +58,22 @@ for (var i = 0; i < myArray.length; i = i + 1) {
 }
 '''
 
-code = example06
+example07 = '''
+function fibonnaci_iterativo(n){
+    let start = 1;
+    let anterior = 0;
+        
+    for (var i = 0; i < n; i = i + 1){
+        start = start + anterior;
+        anterior = start;
+    }
+        
+    console.log(start);
+} 
+
+'''
+
+code = example07
 
 # Analise Léxica
 lexer = AnalisadorLexicoJS()
